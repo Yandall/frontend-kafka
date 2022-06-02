@@ -1,83 +1,142 @@
 <template>
   <v-row justify="center" align="center">
     <v-col cols="12" sm="8" md="6">
-      <v-card class="logo py-4 d-flex justify-center">
-        <NuxtLogo />
-        <VuetifyLogo />
-      </v-card>
       <v-card>
-        <v-card-title class="headline">
-          Welcome to the Vuetify + Nuxt.js template
-        </v-card-title>
         <v-card-text>
-          <p>Vuetify is a progressive Material Design component framework for Vue.js. It was designed to empower developers to create amazing applications.</p>
-          <p>
-            For more information on Vuetify, check out the <a
-              href="https://vuetifyjs.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              documentation
-            </a>.
-          </p>
-          <p>
-            If you have questions, please join the official <a
-              href="https://chat.vuetifyjs.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="chat"
-            >
-              discord
-            </a>.
-          </p>
-          <p>
-            Find a bug? Report it on the github <a
-              href="https://github.com/vuetifyjs/vuetify/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="contribute"
-            >
-              issue board
-            </a>.
-          </p>
-          <p>Thank you for developing with Vuetify and I look forward to bringing more exciting features in the future.</p>
-          <div class="text-xs-right">
-            <em><small>&mdash; John Leider</small></em>
-          </div>
-          <hr class="my-3">
-          <a
-            href="https://nuxtjs.org/"
-            target="_blank"
-            rel="noopener noreferrer"
+          <v-form
+          ref="form"
+          v-model="valid"
+          lazy-validation
           >
-            Nuxt Documentation
-          </a>
-          <br>
-          <a
-            href="https://github.com/nuxt/nuxt.js"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Nuxt GitHub
-          </a>
+            <v-text-field
+              v-model="quantity"
+              label="Cantidad de datos*"
+              type="number"
+              :rules="[rules.required, rules.min]"
+              required
+            ></v-text-field>
+            <span v-if="successResponse != ''" class="green--text">
+              {{ successResponse }}
+            </span>
+            <br/>
+            <span v-if="errorResponse != ''" class="red--text">
+              {{ errorResponse }}
+            </span>
+          </v-form>
         </v-card-text>
         <v-card-actions>
-          <v-spacer />
+          <v-spacer/>
           <v-btn
-            color="primary"
-            nuxt
-            to="/inspire"
+            class="mr-4"
+            @click="send"
           >
-            Continue
+            Enviar
+          </v-btn>
+          <v-btn
+            class="mr-4"
+            @click="getMessages"
+          >
+            Obtener
           </v-btn>
         </v-card-actions>
       </v-card>
+      <br/>
+      <v-simple-table>
+        <template v-slot:default>
+          <thead>
+            <tr>
+              <th class="text-left">
+                Id
+              </th>
+              <th class="text-left">
+                Nombre
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="(item, index) in messagesList"
+              :key="index"
+            >
+              <td>{{ index + 1 }}</td>
+              <td>{{ item }}</td>
+            </tr>
+          </tbody>
+        </template>
+      </v-simple-table>
     </v-col>
   </v-row>
 </template>
 
 <script>
+
+import random from 'random-name'
+
 export default {
-  name: 'IndexPage'
+  name: 'IndexPage',
+  data () {
+    return {
+      rules: {
+        required: value => !!value || 'Ingrese un valor',
+        min: value => value >= 1 || 'El valor debe ser mayor o igual a 1'
+      },
+      successResponse: '',
+      errorResponse: '',
+      quantity: 0,
+      valid: false,
+      messagesList: []
+    }
+  },
+
+  methods: {
+
+    async send () {
+      this.cleanMessages()
+      try {
+        if (!this.$refs.form.validate()) {
+          return
+        }
+        const url = 'https://kafka-backend.herokuapp.com/mensaje'
+        const payload = { messages: `Aquí va una cantidad ${this.quantity}` }
+        const { data } = await this.$axios.post(url, payload)
+        this.successResponse = data.message
+      } catch (error) {
+        if (error.response) {
+          this.errorResponse = error.response.data.message
+        } else {
+          this.errorResponse = 'Hubo un error en el servidor'
+        }
+      }
+    },
+
+    generateRandomList (quantity) {
+      const list = []
+      for (let index = 0; index < quantity; index++) {
+        list.push(random())
+      }
+      return list
+    },
+
+    getMessages () {
+      this.cleanMessages()
+      try {
+        // const url = 'https://kafka-backend.herokuapp.com/getMensaje'
+        // const { data } = await this.$axios.get(url)
+        this.messagesList = this.generateRandomList(this.quantity)
+        this.successResponse = 'Lista creada exitosamente'
+      } catch (error) {
+        if (error.response) {
+          this.errorResponse = error.response.data.message
+        } else {
+          this.errorResponse = 'Hubo un error en el servidor'
+        }
+      }
+    },
+
+    cleanMessages () {
+      this.successResponse = ''
+      this.errorResponse = ''
+    }
+  }
 }
 </script>
